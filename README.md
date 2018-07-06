@@ -8,5 +8,5 @@ Lucas is a web crawler built using [Go](https://golang.org/) and the [Colly](htt
 
 
 ```
-go run crawler.go
+go run lucas.go
 ```

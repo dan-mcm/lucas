@@ -1,0 +1,8 @@
+lucas:
+  container_name: data
+  image: postgres:9.6-alpine
+  ports:
+    - '5432:5432'
+  environment:
+    POSTGRES_DB: 'lucas_db'
+    POSTGRES_USER: 'user'

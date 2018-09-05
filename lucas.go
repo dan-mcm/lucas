@@ -6,6 +6,7 @@ import (
 	"os"
 	"strings"
 	"github.com/gocolly/colly"
+	"github.com/fatih/color"
 )
 
 type Clothing struct {
@@ -15,13 +16,11 @@ type Clothing struct {
 	Price					string
 }
 
-
 func main() {
 	c := colly.NewCollector(
-		// TODO modify with regex later for optimized crawling...
 		// colly.AllowedDomains("https://www.floryday.com/"),
 		colly.CacheDir(".floryday_cache"),
-  	colly.MaxDepth(3), // keeping crawling limited for our initial experiments
+  	// colly.MaxDepth(5), // keeping crawling limited for our initial experiments
   )
 
 	// clothing detail scraping collector
@@ -36,7 +35,6 @@ func main() {
 
 		// debug log
 		log.Print("LINK TO HIT", link)
-
 		// hardcoded urls to skip -> to be optimized -> perhaps map links from external file...
 		if !strings.HasPrefix(link, "/?country_code") || strings.Index(link, "/cart.php") > -1 ||
 		strings.Index(link, "/login.php") > -1 || strings.Index(link, "/cart.php") > -1 ||
@@ -57,16 +55,15 @@ func main() {
 	c.OnHTML(`a[href]`, func(e *colly.HTMLElement) {
 
 		clothingURL := e.Request.AbsoluteURL(e.Attr("href"))
-		log.Println("Validating crawling Link: ", clothingURL)
 
 		// links provided need to be better filtered
 		// hardcoding one value only to work here for now...
-		if clothingURL == "https://www.floryday.com/Cotton-Floral-Short-Sleeve-High-Low-Dress-m1043239" {
+		if strings.Contains(clothingURL, "-Dress-"){
 			// Activate detailCollector
-			log.Println("Crawling Link Validated -> Commencing Crawl...")
+			color.Green("Crawling Link Validated -> Commencing Crawl for %s", clothingURL)
 			detailCollector.Visit(clothingURL)
 		} else {
-			log.Println("Validation Failed -> Cancelling Crawl...")
+			color.Red("Validation Failed -> Cancelling Crawl for %s", clothingURL)
 			return
 		}
 
@@ -74,10 +71,9 @@ func main() {
 
 	// Extract details of the clothing
 	detailCollector.OnHTML(`div[class=prod-right-in]`, func(e *colly.HTMLElement) {
-
 		// TODO secure variables with default error strings in event values are missing
 		title := e.ChildText(".prod-name")
-		code := e.ChildText(".prod-item-code")
+		code := strings.Split(e.ChildText(".prod-item-code"), "#")[1]
 		price := e.ChildText(".prod-price")
 		description := e.ChildText(".grid-uniform")
 

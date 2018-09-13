@@ -1,5 +1,5 @@
 lucas:
-  container_name: data
+  container_name: lucas
   image: postgres:9.6-alpine
   ports:
     - '5432:5432'

@@ -4,19 +4,58 @@ import (
 	"encoding/json"
 	"log"
 	"os"
+	"fmt"
 	"strings"
 	"github.com/gocolly/colly"
 	"github.com/fatih/color"
+	"database/sql"
+	_ "github.com/lib/pq"
+	"strconv"
 )
 
 type Clothing struct {
 	Name					string
 	Code					string
 	Description		string
-	Price					string
+	Price					float64
+}
+
+func dbWrite(product Clothing) {
+	const (
+	  host     = "localhost"
+	  port     = 5432
+	  user     = "user"
+	  // password = ""
+	  dbname   = "lucas_db"
+	)
+
+	psqlInfo := fmt.Sprintf("host=%s port=%d user=%s "+
+    "dbname=%s sslmode=disable",
+    host, port, user, dbname)
+
+	db, err := sql.Open("postgres", psqlInfo)
+  if err != nil {
+    panic(err)
+  }
+  defer db.Close()
+
+  err = db.Ping()
+  if err != nil {
+    panic(err)
+  }
+  log.Print("Successfully connected!")
+	fmt.Printf("%s, %s, %s, %f", product.Name, product.Code, product.Description, product.Price)
+	sqlStatement := `
+	INSERT INTO floryday (product, code, description, price)
+	VALUES ($1, $2, $3, $4)`
+	_, err = db.Exec(sqlStatement, product.Name, product.Code, product.Description, product.Price)
+	if err != nil {
+	  panic(err)
+	}
 }
 
 func main() {
+
 	c := colly.NewCollector(
 		// colly.AllowedDomains("https://www.floryday.com/"),
 		colly.CacheDir(".floryday_cache"),
@@ -33,8 +72,6 @@ func main() {
 
 		link := e.Attr("href")
 
-		// debug log
-		log.Print("LINK TO HIT", link)
 		// hardcoded urls to skip -> to be optimized -> perhaps map links from external file...
 		if !strings.HasPrefix(link, "/?country_code") || strings.Index(link, "/cart.php") > -1 ||
 		strings.Index(link, "/login.php") > -1 || strings.Index(link, "/cart.php") > -1 ||
@@ -74,7 +111,9 @@ func main() {
 		// TODO secure variables with default error strings in event values are missing
 		title := e.ChildText(".prod-name")
 		code := strings.Split(e.ChildText(".prod-item-code"), "#")[1]
-		price := e.ChildText(".prod-price")
+		stringPrice := strings.TrimPrefix(e.ChildText(".prod-price"),"€ ") // TODO non scalable outside eurozone
+		price, err := strconv.ParseFloat(stringPrice, 64) // conversion to float64
+		color.Red("err in parsing price -> %s", err)
 		description := e.ChildText(".grid-uniform")
 
 		clothing := Clothing{
@@ -84,6 +123,11 @@ func main() {
 			Price:					price,
 		}
 
+		// writing as we go to DB
+		// TODO optiize to handle bulk array uplaods instead
+		dbWrite(clothing)
+
+		// appending to our output array...
 		clothes = append(clothes, clothing)
 	})
 

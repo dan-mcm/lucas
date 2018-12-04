@@ -18,3 +18,18 @@ psql -h localhost -U user lucas_db -f dbsetup.sql
 ### Run Lucas
 
 `go run lucas.go`
+
+## Docker
+
+To run Lucas in a Docker container
+
+```
+# build docker image
+docker build .
+
+# run docker container and portforward port 3000
+docker run -ti -p 8000:8000 <docker-image-id>
+
+# publish docker image to docker hub
+docker push <docker-repo>
+```

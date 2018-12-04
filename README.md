@@ -28,7 +28,7 @@ To run Lucas in a Docker container
 docker build .
 
 # run docker container and portforward port 3000
-docker run -ti -p 8000:8000 <docker-image-id>
+docker run -ti -p 8000:8000 --network="host" <docker-image-id>
 
 # publish docker image to docker hub
 docker push <docker-repo>

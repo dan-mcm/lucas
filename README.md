@@ -13,6 +13,20 @@ It is currently setup to crawl floryday -> it will write its output to the conne
 ```
 docker-compose up -d
 psql -h localhost -U user lucas_db -f dbsetup.sql
+
+# note if using docker toolbox you may prefer the following cmd
+psql -h "toolbox-ip-address" -p "5432" -U "user" -d "lucas_db" -f "dbsetup.sql"
+
+# an env variable will need to be added in the lucas.go file
+host = "<your-docker-host>"
+```
+
+### Install Dependencies
+
+```
+go get github.com/lib/pq
+go get github.com/fatih/color
+go get github.com/gocolly/colly
 ```
 
 ### Run Lucas

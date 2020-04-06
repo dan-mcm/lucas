@@ -22,7 +22,7 @@ type Clothing struct {
 
 func dbWrite(product Clothing) {
 	const (
-	  host     = "localhost"
+	  host     = "<your-docker-host>"
 	  port     = 5432
 	  user     = "user"
 	  // password = ""
@@ -59,7 +59,8 @@ func main() {
 	c := colly.NewCollector(
 		// colly.AllowedDomains("https://www.floryday.com/"),
 		colly.CacheDir(".floryday_cache"),
-  	// colly.MaxDepth(5), // keeping crawling limited for our initial experiments
+  	// colly.MaxDepth(5), // keeping crawling limited for our initial experiments,
+		// colly.UserAgent("Mozilla/5.0 (Windows NT 6.1) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/41.0.2228.0 Safari/537.36")
   )
 
 	// clothing detail scraping collector
@@ -97,24 +98,31 @@ func main() {
 		// hardcoding one value only to work here for now...
 		if strings.Contains(clothingURL, "-Dress-"){
 			// Activate detailCollector
-			color.Green("Crawling Link Validated -> Commencing Crawl for %s", clothingURL)
-			detailCollector.Visit(clothingURL)
+			// Setting default country_code for currency purposes
+			color.Green("Crawling Link Validated -> Commencing Crawl for %s", clothingURL + "?country_code=IE")
+			detailCollector.Visit(clothingURL + "?country_code=IE")
 		} else {
-			color.Red("Validation Failed -> Cancelling Crawl for %s", clothingURL)
+			color.Red("Validation Failed -> Cancelling Crawl for %s", clothingURL + "?country_code=IE")
 			return
 		}
-
 	})
 
 	// Extract details of the clothing
-	detailCollector.OnHTML(`div[class=prod-right-in]`, func(e *colly.HTMLElement) {
+	detailCollector.OnHTML(`html`, func(e *colly.HTMLElement) {
+
 		// TODO secure variables with default error strings in event values are missing
 		title := e.ChildText(".prod-name")
 		code := strings.Split(e.ChildText(".prod-item-code"), "#")[1]
-		stringPrice := strings.TrimPrefix(e.ChildText(".prod-price"),"€ ") // TODO non scalable outside eurozone
+
+		// price parsing & reformatting
+		initialprice := e.ChildText(".currency-prices")
+		pricenosymbol := strings.TrimSuffix(initialprice," €")
+		stringPrice := strings.Replace(pricenosymbol, ",", ".", 1)
 		price, err := strconv.ParseFloat(stringPrice, 64) // conversion to float64
 		color.Red("err in parsing price -> %s", err)
-		description := e.ChildText(".grid-uniform")
+
+		// desecription requires more refined parsing into subsections
+		description := strings.TrimSpace(e.ChildText(".grid-uniform"))
 
 		clothing := Clothing{
 			Name: 					title,

@@ -2,7 +2,6 @@ package main
 
 import (
 	"encoding/json"
-	"log"
 	"os"
 	"fmt"
 	"strings"
@@ -11,6 +10,7 @@ import (
 	"database/sql"
 	_ "github.com/lib/pq"
 	"strconv"
+	"github.com/joho/godotenv"
 )
 
 type Clothing struct {
@@ -21,17 +21,12 @@ type Clothing struct {
 }
 
 func dbWrite(product Clothing) {
-	const (
-	  host     = "<your-docker-host>"
-	  port     = 5432
-	  user     = "user"
-	  // password = ""
-	  dbname   = "lucas_db"
-	)
 
-	psqlInfo := fmt.Sprintf("host=%s port=%d user=%s "+
-    "dbname=%s sslmode=disable",
-    host, port, user, dbname)
+	psqlInfo := fmt.Sprintf("host=%s port=%s user=%s dbname=%s sslmode=disable",
+    os.Getenv("HOST"),
+		os.Getenv("PORT"),
+		os.Getenv("USER"),
+		os.Getenv("DBNAME"))
 
 	db, err := sql.Open("postgres", psqlInfo)
   if err != nil {
@@ -43,19 +38,28 @@ func dbWrite(product Clothing) {
   if err != nil {
     panic(err)
   }
-  log.Print("Successfully connected!")
-	fmt.Printf("%s, %s, %s, %f", product.Name, product.Code, product.Description, product.Price)
+
 	sqlStatement := `
 	INSERT INTO floryday (product, code, description, price)
 	VALUES ($1, $2, $3, $4)`
 	_, err = db.Exec(sqlStatement, product.Name, product.Code, product.Description, product.Price)
+
 	if err != nil {
+		color.Red("[DB] Failed Write: %s", product.Name)
 	  panic(err)
 	}
+	color.Green("[DB] Successful Write: %s", product.Name)
 }
 
 func main() {
 
+	// loading config
+	err := godotenv.Load()
+  if err != nil {
+    color.Red("Error loading .env file")
+  }
+
+	// setting up colly collector
 	c := colly.NewCollector(
 		// colly.AllowedDomains("https://www.floryday.com/"),
 		colly.CacheDir(".floryday_cache"),
@@ -66,40 +70,36 @@ func main() {
 	// clothing detail scraping collector
 	detailCollector := c.Clone()
 
+	// defaulting to array of 200 results
 	clothes := make([]Clothing, 0, 200)
 
 	// Find and visit all links
 	c.OnHTML("a[href]", func(e *colly.HTMLElement) {
-
 		link := e.Attr("href")
-
 		// hardcoded urls to skip -> to be optimized -> perhaps map links from external file...
 		if !strings.HasPrefix(link, "/?country_code") || strings.Index(link, "/cart.php") > -1 ||
 		strings.Index(link, "/login.php") > -1 || strings.Index(link, "/cart.php") > -1 ||
 		strings.Index(link, "/account") > -1 || strings.Index(link, "/privacy-policy.html") > -1 {
 			return
 		}
-
 		// scrape the page
 		e.Request.Visit(link)
 	})
 
 	// printing visiting message for debug purposes
 	c.OnRequest(func(r *colly.Request) {
-		log.Println("Visiting", r.URL.String(), "\n")
+		color.Blue("Visiting", r.URL.String(), "\n")
 	})
 
 	// TODO filter this better a[href] is way too broad -> may need regex
 	c.OnHTML(`a[href]`, func(e *colly.HTMLElement) {
-
 		clothingURL := e.Request.AbsoluteURL(e.Attr("href"))
-
 		// links provided need to be better filtered
 		// hardcoding one value only to work here for now...
 		if strings.Contains(clothingURL, "-Dress-"){
 			// Activate detailCollector
 			// Setting default country_code for currency purposes
-			color.Green("Crawling Link Validated -> Commencing Crawl for %s", clothingURL + "?country_code=IE")
+			color.Magenta("Commencing Crawl for %s", clothingURL + "?country_code=IE")
 			detailCollector.Visit(clothingURL + "?country_code=IE")
 		} else {
 			color.Red("Validation Failed -> Cancelling Crawl for %s", clothingURL + "?country_code=IE")
@@ -119,7 +119,10 @@ func main() {
 		pricenosymbol := strings.TrimSuffix(initialprice," €")
 		stringPrice := strings.Replace(pricenosymbol, ",", ".", 1)
 		price, err := strconv.ParseFloat(stringPrice, 64) // conversion to float64
-		color.Red("err in parsing price -> %s", err)
+		if err != nil {
+	    color.Red("err in parsing price -> %s", err)
+	  }
+
 
 		// desecription requires more refined parsing into subsections
 		description := strings.TrimSpace(e.ChildText(".grid-uniform"))
@@ -140,13 +143,11 @@ func main() {
 	})
 
 	// start scraping at our seed address
-	c.Visit("https://www.floryday.com/Dresses-r9872/")
+	c.Visit(os.Getenv("SEED_ADDRESS"))
 
 	enc := json.NewEncoder(os.Stdout)
 	enc.SetIndent("", "  ")
-
 	// Dump json to the standard output
-	// TODO this could be dumped into a DB instead
 	enc.Encode(clothes)
 
 }

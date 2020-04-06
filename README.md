@@ -10,15 +10,14 @@ It is currently setup to crawl floryday -> it will write its output to the conne
 
 ### DB Setup
 
+Note: Environmental variables for DB setup are included in the .env file.
+
 ```
 docker-compose up -d
 psql -h localhost -U user lucas_db -f dbsetup.sql
 
 # note if using docker toolbox you may prefer the following cmd
 psql -h "toolbox-ip-address" -p "5432" -U "user" -d "lucas_db" -f "dbsetup.sql"
-
-# an env variable will need to be added in the lucas.go file
-host = "<your-docker-host>"
 ```
 
 ### Install Dependencies
@@ -27,6 +26,7 @@ host = "<your-docker-host>"
 go get github.com/lib/pq
 go get github.com/fatih/color
 go get github.com/gocolly/colly
+go get github.com/joho/godotenv
 ```
 
 ### Run Lucas

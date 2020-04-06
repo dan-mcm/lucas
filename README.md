@@ -13,6 +13,7 @@ It is currently setup to crawl floryday -> it will write its output to the conne
 Note: Environmental variables for DB setup are included in the .env file.
 
 ```
+cd db
 docker-compose up -d
 psql -h localhost -U user lucas_db -f dbsetup.sql
 

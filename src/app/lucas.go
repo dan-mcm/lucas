@@ -3,53 +3,13 @@ package main
 import (
 	"encoding/json"
 	"os"
-	"fmt"
 	"strings"
+	"time"
 	"github.com/gocolly/colly"
 	"github.com/fatih/color"
-	"database/sql"
-	_ "github.com/lib/pq"
 	"strconv"
 	"github.com/joho/godotenv"
 )
-
-type Clothing struct {
-	Name					string
-	Code					string
-	Description		string
-	Price					float64
-}
-
-func dbWrite(product Clothing) {
-
-	psqlInfo := fmt.Sprintf("host=%s port=%s user=%s dbname=%s sslmode=disable",
-    os.Getenv("HOST"),
-		os.Getenv("PORT"),
-		os.Getenv("USER"),
-		os.Getenv("DBNAME"))
-
-	db, err := sql.Open("postgres", psqlInfo)
-  if err != nil {
-    panic(err)
-  }
-  defer db.Close()
-
-  err = db.Ping()
-  if err != nil {
-    panic(err)
-  }
-
-	sqlStatement := `
-	INSERT INTO floryday (product, code, description, price)
-	VALUES ($1, $2, $3, $4)`
-	_, err = db.Exec(sqlStatement, product.Name, product.Code, product.Description, product.Price)
-
-	if err != nil {
-		color.Red("[DB] Failed Write: %s", product.Name)
-	  panic(err)
-	}
-	color.Green("[DB] Successful Write: %s", product.Name)
-}
 
 func main() {
 
@@ -78,8 +38,8 @@ func main() {
 		link := e.Attr("href")
 		// hardcoded urls to skip -> to be optimized -> perhaps map links from external file...
 		if !strings.HasPrefix(link, "/?country_code") || strings.Index(link, "/cart.php") > -1 ||
-		strings.Index(link, "/login.php") > -1 || strings.Index(link, "/cart.php") > -1 ||
-		strings.Index(link, "/account") > -1 || strings.Index(link, "/privacy-policy.html") > -1 {
+		strings.Index(link, "/login.php") > -1 || strings.Index(link, "/account") > -1 ||
+		strings.Index(link, "/privacy-policy.html") > -1 {
 			return
 		}
 		// scrape the page
@@ -88,7 +48,7 @@ func main() {
 
 	// printing visiting message for debug purposes
 	c.OnRequest(func(r *colly.Request) {
-		color.Blue("Visiting", r.URL.String(), "\n")
+		color.Blue("Visiting %s %s", r.URL.String(), "\n")
 	})
 
 	// TODO filter this better a[href] is way too broad -> may need regex
@@ -107,7 +67,16 @@ func main() {
 		}
 	})
 
-	// Extract details of the clothing
+	// experimental getting image url
+	detailCollector.OnHTML(`.swipe-wrap`, func(e *colly.HTMLElement) {
+		 link := e.ChildAttr("img", "src")
+		 // ignore secondary blank source image element
+		 if len(link) > 0 {
+			 color.Blue("https:%s", e.ChildAttr("img", "src"))
+		 }
+	})
+
+	// Extract details of the clothing (- image url)
 	detailCollector.OnHTML(`html`, func(e *colly.HTMLElement) {
 
 		// TODO secure variables with default error strings in event values are missing
@@ -123,15 +92,31 @@ func main() {
 	    color.Red("err in parsing price -> %s", err)
 	  }
 
-
 		// desecription requires more refined parsing into subsections
-		description := strings.TrimSpace(e.ChildText(".grid-uniform"))
+		// description := strings.TrimSpace(e.ChildText(".grid-uniform"))
+
+		url := "http://example.com"
+		description := "Le Placeholder"
+		photo := "random-image-url" // see logged result above and integrate logic
 
 		clothing := Clothing{
-			Name: 					title,
-			Code: 					code,
-			Description: 		description,
-			Price:					price,
+			Name: title,
+			Price: price,
+			Url: url, // placeholder
+			Description: description, // placeholder
+			Code: code,
+			Style: "style",
+			Pattern: "pattern",
+			Sleeve: "sleeve",
+			Silhouette: "silhouette",
+			Season: "season",
+			Material: "material",
+			Type: "type",
+			Neckline: "neckline",
+			Length: "length",
+			Occasion: "occasion",
+			Image: photo, // placeholder
+			Date: time.Now().String(),
 		}
 
 		// writing as we go to DB
@@ -141,6 +126,7 @@ func main() {
 		// appending to our output array...
 		clothes = append(clothes, clothing)
 	})
+
 
 	// start scraping at our seed address
 	c.Visit(os.Getenv("SEED_ADDRESS"))

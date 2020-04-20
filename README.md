@@ -23,16 +23,15 @@ psql -h "toolbox-ip-address" -p "5432" -U "user" -d "lucas_db" -f "dbsetup.sql"
 
 ### Install Dependencies
 
-```
-go get github.com/lib/pq
-go get github.com/fatih/color
-go get github.com/gocolly/colly
-go get github.com/joho/godotenv
-```
+[go.mod](https://blog.golang.org/using-go-modules) is used for dependency management.
 
 ### Run Lucas
 
-`go run lucas.go`
+The main package is located under src/app -> with the main function located within `lucas.go`. To run the scraper:
+
+```
+go run src/app/*.go
+```
 
 ## Docker
 
@@ -40,7 +39,7 @@ To run Lucas in a Docker container
 
 ```
 # build docker image
-docker build .
+docker build src/app
 
 # run docker container and portforward port 3000
 docker run -ti -p 8000:8000 --network="host" <docker-image-id>

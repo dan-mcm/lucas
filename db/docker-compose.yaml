@@ -6,5 +6,6 @@ lucas:
   environment:
     POSTGRES_DB: 'lucas_db'
     POSTGRES_USER: 'user'
+    POSTGRES_PASSWORD: 'pass'
   ports:
       - "5432:5432"

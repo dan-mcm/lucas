@@ -6,14 +6,23 @@ import (
 	"github.com/fatih/color"
 	"database/sql"
 	_ "github.com/lib/pq"
+	"github.com/joho/godotenv"
 )
 
 func dbWrite(product Clothing) {
 
-	psqlInfo := fmt.Sprintf("host=%s port=%s user=%s dbname=%s sslmode=disable",
+	// loading env vars from .env file
+	err := godotenv.Load()
+  if err != nil {
+    color.Red("Error loading .env file")
+  }
+
+	// establishing postgres connection
+	psqlInfo := fmt.Sprintf("host=%s port=%s user=%s password=%s dbname=%s sslmode=disable",
     os.Getenv("HOST"),
 		os.Getenv("PORT"),
-		os.Getenv("USER"),
+		os.Getenv("DB_USER"),
+		os.Getenv("DB_PASS"),
 		os.Getenv("DBNAME"))
 
 	db, err := sql.Open("postgres", psqlInfo)
@@ -27,6 +36,7 @@ func dbWrite(product Clothing) {
     panic(err)
   }
 
+	// insert statement
 	sqlStatement := `
 	INSERT INTO floryday (product, code, description, price)
 	VALUES ($1, $2, $3, $4)`
